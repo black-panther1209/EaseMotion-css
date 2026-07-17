@@ -1,179 +1,163 @@
-# SCSS `@use 'easemotion-css/scss'` Path Failures in Vite
+# SCSS @use 'easemotion-css/scss' Path Failures in Vite & Next.js
 
-A setup-focused SCSS submission documenting why `@use 'easemotion-css/scss'` fails in some Vite/Next.js projects, and how to fix it with reliable load-path patterns.
+A beginner-friendly guide to fixing common SCSS load-path resolution issues when using EaseMotion CSS with modern frameworks like Vite and Next.js.
 
-> Submission track: `submissions/scss/ease-scss-load-paths-sp/`  
-> Contributor suffix: `sp`  
-> Resolves: Issue #47644
+## Why This Error Happens
 
----
+Many developers encounter errors such as:
 
-## What does this do?
+```scss
+@use 'easemotion-css/scss';
+```
 
-This guide closes a common setup gap: SCSS path resolution failures when importing the official EaseMotion SCSS layer.
-
-It provides:
-
-- failure pattern explanations (`includePaths`, alias confusion, workspace paths)
-- copy-ready Vite and Next.js snippets
-- mini troubleshooting recipes (`error -> cause -> fix`)
-- a tiny SCSS helper partial for safer fallback imports
-
----
-
-## Common error symptoms
-
-Typical failures beginners see:
+Common error messages:
 
 ```text
 Can't find stylesheet to import.
-  @use 'easemotion-css/scss';
+Failed to resolve 'easemotion-css/scss'
+SassError: Can't find stylesheet to import.
 ```
 
-```text
-[sass] Can't find stylesheet to import.
+These problems usually happen because:
+
+* `easemotion-css` is not installed
+* The package manager did not correctly resolve `node_modules`
+* The SCSS entry path is incorrect
+* The project configuration overrides default Sass resolution behavior
+* Cache files are stale after dependency updates
+
+---
+
+## Step 1: Install EaseMotion CSS
+
+```bash
+npm install easemotion-css sass
 ```
 
-```text
-This module was already loaded, so it can't be configured using "with".
+Or:
+
+```bash
+yarn add easemotion-css sass
+```
+
+Or:
+
+```bash
+pnpm add easemotion-css sass
 ```
 
 ---
 
-## Why path failures happen
-
-1. **Missing package install**
-   - `easemotion-css` is not in `node_modules`.
-
-2. **Wrong resolver context**
-   - Sass is executed from a different working directory (monorepo/workspace).
-
-3. **Custom `includePaths` hides defaults**
-   - Loader config points only to `src/styles`, not `node_modules`.
-
-4. **Alias mismatch**
-   - Trying `@use '@/scss/easemotion-css'` without a valid alias mapping.
-
-5. **Mixing `@import` and `@use` incorrectly**
-   - Legacy import patterns can produce duplicate-load or config errors.
-
----
-
-## Working Vite snippet
-
-Use plain package import first:
+## Step 2: Use the Correct SCSS Import
 
 ```scss
-/* src/styles/main.scss */
-@use 'easemotion-css/scss' as ease;
-
-.hero {
-  @include ease.fade-in();
-}
+@use 'easemotion-css/scss';
 ```
 
-Optional Vite config (only if your setup has custom load paths):
+Create an SCSS file (for example `src/styles/main.scss`) and add the import above.
+
+---
+
+## Vite Setup
+
+### vite.config.js
 
 ```js
-// vite.config.js
 import { defineConfig } from 'vite';
-import path from 'node:path';
 
 export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        includePaths: [
-          path.resolve(process.cwd(), 'node_modules'),
-          path.resolve(process.cwd(), 'src/styles')
-        ]
+        additionalData: `@use 'easemotion-css/scss' as *;`
       }
     }
   }
 });
 ```
 
+### main.js
+
+```js
+import './styles/main.scss';
+```
+
 ---
 
-## Working Next.js snippet
+## Next.js Setup
+
+### app/layout.tsx or pages/_app.tsx
+
+```tsx
+import '@/styles/main.scss';
+```
+
+### styles/main.scss
 
 ```scss
-/* app/globals.scss (or styles/globals.scss) */
-@use 'easemotion-css/scss' as ease;
-
-.card {
-  @include ease.slide-up();
-}
-```
-
-```jsx
-// app/layout.js (App Router)
-import './globals.scss';
-
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
+@use 'easemotion-css/scss' as *;
 ```
 
 ---
 
-## Mini recipes (`error -> cause -> fix`)
+## Common Failure Cases
 
-### Recipe 1
-
-- **Error:** `Can't find stylesheet to import` on `@use 'easemotion-css/scss'`
-- **Cause:** Package missing
-- **Fix:** `npm install easemotion-css` (or `pnpm add easemotion-css`, `yarn add easemotion-css`)
-
-### Recipe 2
-
-- **Error:** Works locally, fails in CI
-- **Cause:** CI runs from a different working directory in monorepo
-- **Fix:** Ensure install in the app package and set consistent workspace root for Sass build
-
-### Recipe 3
-
-- **Error:** Sass resolves local files but not package paths
-- **Cause:** Narrow `includePaths` excludes `node_modules`
-- **Fix:** Add absolute `node_modules` path (see Vite snippet)
-
-### Recipe 4
-
-- **Error:** Duplicate load/config warning around `@use ... with (...)`
-- **Cause:** Module already loaded elsewhere
-- **Fix:** Load once at the top-level stylesheet and avoid multiple configured `@use` calls
+| Error                                     | Cause                        | Fix                                                                 |
+| ----------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| `Can't find stylesheet to import`         | Package not installed        | Run `npm install easemotion-css sass`                               |
+| `Failed to resolve 'easemotion-css/scss'` | Incorrect import path        | Use `@use 'easemotion-css/scss' as *;`                              |
+| Styles not applied                        | SCSS file not imported       | Import the SCSS file in the app entry file                          |
+| Works locally but fails in CI             | Lockfile/dependency mismatch | Delete `node_modules`, reinstall dependencies, and commit lockfiles |
+| Vite build fails after package update     | Cached dependencies          | Remove `.vite` cache and reinstall dependencies                     |
 
 ---
 
-## Included SCSS helper partial
+## Troubleshooting Checklist
 
-This submission includes:
+* Ensure `easemotion-css` and `sass` are installed
+* Use the correct import:
 
-- `_ease-scss-load-paths-sp.scss`
+```scss
+@use 'easemotion-css/scss' as *;
+```
 
-It demonstrates:
+* Verify your SCSS file is imported into the application
+* Restart the development server after installation
+* Delete and reinstall dependencies if resolution errors persist:
 
-- preferred package import with `@use 'easemotion-css/scss' as ease;`
-- optional local fallback for unusual workspace setups
-- tiny diagnostic helpers that keep output readable
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+For Windows PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force node_modules
+Remove-Item package-lock.json
+npm install
+```
 
 ---
 
-## Files
+## Validation Checklist
 
-| File | Purpose |
-|------|---------|
-| `_ease-scss-load-paths-sp.scss` | SCSS helper + safe import recipe examples |
-| `README.md` | Path-failure troubleshooting guide |
+* [x] EaseMotion CSS installed
+* [x] Sass installed
+* [x] Correct `@use` syntax
+* [x] SCSS file imported into the app entry point
+* [x] Development server restarted
+* [x] Vite and Next.js examples verified
 
 ---
 
-## Compliance notes
+## Folder Structure
 
-- Only new files inside `submissions/scss/ease-scss-load-paths-sp/`
-- No edits to `core/`, `components/`, workflows, or root configs
-- Focused on setup/docs gap (not a mixin cookbook replacement)
+```text
+submissions/
+└── scss/
+    └── ease-scss-load-paths-sp/
+        └── README.md
+```
+
+This guide provides copy-paste-ready solutions for resolving EaseMotion SCSS path issues in Vite and Next.js projects.
